@@ -6,249 +6,172 @@ import '../theme/app_theme.dart';
 import 'glass_card.dart';
 
 class ProfileHero extends StatelessWidget {
-  const ProfileHero({
-    super.key,
-    required this.photo,
-    required this.pickingPhoto,
-    required this.revealPrivate,
-    required this.onChangePhoto,
-    this.onRemovePhoto,
-  });
-
-  final ImageProvider? photo;
-  final bool pickingPhoto;
-  final bool revealPrivate;
-  final VoidCallback onChangePhoto;
-  final VoidCallback? onRemovePhoto;
+  const ProfileHero({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final screen = MediaQuery.sizeOf(context);
+    // A phone on its side: tighter padding, smaller photo and name.
+    final short = screen.height < AppBreak.short;
+    final motion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : AppStyle.motion;
 
     return GlassCard(
+      level: GlassLevel.hero,
+      padding: EdgeInsets.all(short ? AppSpace.lg : AppSpace.xl),
+      blurSigma: AppStyle.surfaceBlur,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-          final horizontal = constraints.maxWidth >= 720 && textScale <= 1.3;
-          final alignment = horizontal
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.center;
-          final textAlign = horizontal ? TextAlign.start : TextAlign.center;
-          final avatar = Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpace.xs),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.18),
-                  ),
-                  gradient: LinearGradient(
-                    begin: AlignmentDirectional.topStart,
-                    end: AlignmentDirectional.bottomEnd,
-                    colors: [colors.surface, colors.primaryContainer],
-                  ),
-                ),
-                child: Semantics(
-                  image: true,
-                  label: photo == null
-                      ? AppLabels.profileInitials
-                      : AppLabels.profilePhoto,
-                  child: ExcludeSemantics(
-                    child: AnimatedSwitcher(
-                      duration: reducedMotion ? Duration.zero : AppStyle.motion,
-                      switchInCurve: AppStyle.curve,
-                      switchOutCurve: AppStyle.curve,
-                      child: CircleAvatar(
-                        key: ValueKey(photo),
-                        radius: 44,
-                        backgroundColor: colors.primary,
-                        foregroundColor: colors.onPrimary,
-                        backgroundImage: photo,
-                        child: photo == null
-                            ? Text(
-                                StudentProfile.initials,
-                                style: theme.textTheme.headlineMedium?.copyWith(
-                                  color: colors.onPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpace.xs),
-              TextButton(
-                key: const ValueKey('change-photo'),
-                onPressed: pickingPhoto ? null : onChangePhoto,
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      pickingPhoto
-                          ? Icons.hourglass_top_rounded
-                          : Icons.add_a_photo_outlined,
-                      size: 18,
-                    ),
-                    const SizedBox(width: AppSpace.sm),
-                    Flexible(
-                      child: Text(
-                        pickingPhoto
-                            ? AppLabels.choosingPhoto
-                            : AppLabels.changePhoto,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (photo != null && onRemovePhoto != null)
-                TextButton(
-                  key: const ValueKey('remove-photo'),
-                  onPressed: pickingPhoto ? null : onRemovePhoto,
-                  style: TextButton.styleFrom(
-                    foregroundColor: colors.onSurfaceVariant,
-                    minimumSize: const Size(48, 48),
-                  ),
-                  child: const Text(
-                    AppLabels.removePhoto,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-            ],
-          );
+          // Photo beside the text whenever the card is wide enough for it.
+          final beside = constraints.maxWidth >= AppBreak.heroRow * textScale;
+          final textAlign = beside ? TextAlign.start : TextAlign.center;
           final identity = Column(
-            crossAxisAlignment: alignment,
+            crossAxisAlignment: beside
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
             children: [
               Semantics(
                 header: true,
-                child: Text(
-                  StudentProfile.name,
+                child: AnimatedDefaultTextStyle(
+                  duration: motion,
                   textAlign: textAlign,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.7,
-                  ),
+                  style: (short
+                      ? theme.textTheme.headlineSmall
+                      : theme.textTheme.headlineMedium)!,
+                  child: const Text(StudentProfile.name),
                 ),
               ),
-              const SizedBox(height: AppSpace.sm),
+              const SizedBox(height: AppSpace.xs),
               Text(
                 StudentProfile.university,
                 textAlign: textAlign,
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: colors.primary,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: AppSpace.lg),
-              Container(
-                width: AppSpace.xxl,
-                height: 3,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppStyle.chipRadius),
-                  gradient: LinearGradient(
-                    colors: [colors.primary, colors.tertiary],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpace.lg),
-              Text(
-                StudentProfile.department,
-                textAlign: textAlign,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSpace.xs),
+              SizedBox(height: short ? AppSpace.sm : AppSpace.md),
+              // The degree names the subject once; no separate department line.
               Text(
                 StudentProfile.degree,
                 textAlign: textAlign,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  height: 1.5,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colors.onSurface,
+                  height: 1.4,
                 ),
               ),
-              const SizedBox(height: AppSpace.lg),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.surface.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(AppStyle.chipRadius),
-                  border: Border.all(color: AppStyle.border(colors)),
+              const SizedBox(height: AppSpace.sm),
+              // Shown here for reference; the Contact card has the copy and
+              // send actions. It shrinks rather than breaking mid-address.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.mail_outlined,
+                        size: AppStyle.iconSm,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Text(
+                      StudentProfile.universityEmail,
+                      semanticsLabel:
+                          '${AppLabels.universityEmail} '
+                          '${StudentProfile.universityEmail}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.md,
-                    vertical: AppSpace.sm,
-                  ),
-                  child: Wrap(
-                    alignment: horizontal
-                        ? WrapAlignment.start
-                        : WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: AppSpace.sm,
-                    runSpacing: AppSpace.xs,
-                    children: [
-                      ExcludeSemantics(
-                        child: Icon(
-                          revealPrivate
-                              ? Icons.badge_outlined
-                              : Icons.lock_outline_rounded,
-                          size: 16,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        AppLabels.studentId,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        revealPrivate
-                            ? StudentProfile.studentId
-                            : AppLabels.hidden,
-                        key: const ValueKey('student-id-value'),
-                        textAlign: textAlign,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              const GlassChip(
+                '${AppLabels.majorShort}: ${StudentProfile.major}',
+                accent: true,
               ),
             ],
           );
-
-          if (horizontal) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(width: 160, child: avatar),
-                const SizedBox(width: AppSpace.xxl),
-                Expanded(child: identity),
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          // One Flex for both arrangements, so the photo keeps its place in
+          // the tree and resizes smoothly when the phone is rotated.
+          return Flex(
+            direction: beside ? Axis.horizontal : Axis.vertical,
+            spacing: beside ? AppSpace.xl : AppSpace.sm,
             children: [
-              avatar,
-              const SizedBox(height: AppSpace.sm),
-              identity,
+              _Photo(radius: AppStyle.avatarRadius(screen), motion: motion),
+              if (beside) Expanded(child: identity) else identity,
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// The fixed local portrait stays at its full aspect ratio inside the frame.
+class _Photo extends StatelessWidget {
+  const _Photo({required this.radius, required this.motion});
+
+  final double radius;
+  final Duration motion;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppStyle.glassEdge(colors)),
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
+            colors: [
+              colors.primary.withValues(alpha: 0.12),
+              colors.primary.withValues(alpha: 0.45),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.xs),
+          child: Semantics(
+            image: true,
+            label: AppLabels.profilePhoto,
+            child: ExcludeSemantics(
+              child: CircleAvatar(
+                radius: radius,
+                backgroundColor: dark
+                    ? colors.surfaceContainerHighest
+                    : colors.primary,
+                child: AnimatedSwitcher(
+                  duration: motion,
+                  switchInCurve: AppStyle.curve,
+                  child: ClipOval(
+                    key: const ValueKey(StudentProfile.profileImage),
+                    child: Transform.scale(
+                      scale: 1.08,
+                      child: Image.asset(
+                        StudentProfile.profileImage,
+                        width: radius * 2,
+                        height: radius * 2,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

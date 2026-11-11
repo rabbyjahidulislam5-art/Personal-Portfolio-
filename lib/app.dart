@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'l10n/app_labels.dart';
 import 'screens/student_profile_screen.dart';
 import 'theme/app_theme.dart';
 
 class StudentProfileApp extends StatefulWidget {
-  const StudentProfileApp({super.key, this.imagePicker, this.openUrl});
+  const StudentProfileApp({super.key, this.openUrl, this.preferences});
 
-  final ImagePicker? imagePicker;
   final Future<bool> Function(Uri)? openUrl;
+
+  /// Remembers the appearance choice. Without it the choice lasts one session.
+  final SharedPreferences? preferences;
 
   @override
   State<StudentProfileApp> createState() => _StudentProfileAppState();
 }
 
 class _StudentProfileAppState extends State<StudentProfileApp> {
-  ThemeMode _themeMode = ThemeMode.system;
+  static const _themeKey = 'themeMode';
+
+  // An unknown or missing stored value falls back to System.
+  late ThemeMode _themeMode =
+      ThemeMode.values.asNameMap()[widget.preferences?.getString(_themeKey)] ??
+      ThemeMode.system;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -29,9 +36,10 @@ class _StudentProfileAppState extends State<StudentProfileApp> {
         ? Duration.zero
         : AppStyle.motion,
     home: StudentProfileScreen(
-      themeMode: _themeMode,
-      onThemeChanged: (value) => setState(() => _themeMode = value),
-      imagePicker: widget.imagePicker,
+      onThemeChanged: (value) {
+        setState(() => _themeMode = value);
+        widget.preferences?.setString(_themeKey, value.name);
+      },
       openUrl: widget.openUrl,
     ),
   );

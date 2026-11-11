@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../data/student_profile.dart';
 import '../l10n/app_labels.dart';
 import '../theme/app_theme.dart';
+import 'adaptive_grid.dart';
+import 'glass_card.dart';
+import 'profile_entrance.dart';
 import 'section_card.dart';
 
 class AcademicOverview extends StatelessWidget {
@@ -11,11 +14,10 @@ class AcademicOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
     return SectionCard(
       title: AppLabels.academicOverview,
-      icon: Icons.school_outlined,
+      icon: Icons.insights_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -24,87 +26,64 @@ class AcademicOverview extends StatelessWidget {
             runSpacing: AppSpace.sm,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                StudentProfile.semester,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(AppStyle.chipRadius),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpace.md,
-                    vertical: AppSpace.xs,
-                  ),
-                  child: Text(
-                    StudentProfile.academicYear,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colors.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              Text(StudentProfile.semester, style: theme.textTheme.titleMedium),
+              const GlassChip(StudentProfile.academicYear, accent: true),
             ],
           ),
           const SizedBox(height: AppSpace.lg),
           LayoutBuilder(
             builder: (context, constraints) {
               final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-              final horizontal = constraints.maxWidth >= 336 * scale;
-              const stats = [
-                (StudentProfile.cgpa, AppLabels.cgpa, Icons.auto_graph_rounded),
-                (
-                  StudentProfile.completedCredits,
-                  AppLabels.completedCredits,
-                  Icons.menu_book_outlined,
+              final beside = constraints.maxWidth >= AppBreak.stats * scale;
+              final stats = [
+                // The scale is always written next to the result, so 4.00 can
+                // never be read as the achieved CGPA.
+                _StatisticTile(
+                  key: const ValueKey('academic-stat-0'),
+                  value: StudentProfile.cgpa,
+                  outOf: StudentProfile.cgpaScale,
+                  label: AppLabels.cgpa,
+                  icon: Icons.auto_graph_outlined,
+                  compact: !beside,
                 ),
-                (
-                  StudentProfile.graduationYear,
-                  AppLabels.expectedGraduation,
-                  Icons.event_outlined,
+                _StatisticTile(
+                  key: const ValueKey('academic-stat-1'),
+                  value: '${StudentProfile.completedCredits}',
+                  outOf: '${StudentProfile.totalCredits}',
+                  progress:
+                      StudentProfile.completedCredits /
+                      StudentProfile.totalCredits,
+                  label: AppLabels.completedCredits,
+                  icon: Icons.menu_book_outlined,
+                  compact: !beside,
+                ),
+                _StatisticTile(
+                  key: const ValueKey('academic-stat-2'),
+                  value: StudentProfile.graduationYear,
+                  label: AppLabels.expectedGraduation,
+                  icon: Icons.event_outlined,
+                  compact: !beside,
                 ),
               ];
 
-              if (horizontal) {
-                return IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var index = 0; index < stats.length; index++) ...[
-                        if (index != 0) const SizedBox(width: AppSpace.sm),
-                        Expanded(
-                          child: _StatisticTile(
-                            key: ValueKey('academic-stat-$index'),
-                            value: stats[index].$1,
-                            label: stats[index].$2,
-                            icon: stats[index].$3,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+              // Each tile arrives a beat after the one before it.
+              final tiles = [
+                for (final (index, tile) in stats.indexed)
+                  ProfileEntrance(index: index, child: tile),
+              ];
+              if (!beside) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: AppSpace.sm,
+                  children: tiles,
                 );
               }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var index = 0; index < stats.length; index++) ...[
-                    if (index != 0) const SizedBox(height: AppSpace.sm),
-                    _StatisticTile(
-                      key: ValueKey('academic-stat-$index'),
-                      value: stats[index].$1,
-                      label: stats[index].$2,
-                      icon: stats[index].$3,
-                      compact: true,
-                    ),
-                  ],
-                ],
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: AppSpace.sm,
+                  children: [for (final tile in tiles) Expanded(child: tile)],
+                ),
               );
             },
           ),
@@ -120,80 +99,153 @@ class _StatisticTile extends StatelessWidget {
     required this.value,
     required this.label,
     required this.icon,
+    this.outOf,
+    this.progress,
     this.compact = false,
   });
 
   final String value;
   final String label;
   final IconData icon;
+
+  /// The maximum the value is measured against, shown as "value / outOf".
+  final String? outOf;
+  final double? progress;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final largeText = MediaQuery.textScalerOf(context).scale(16) > 22;
-    final valueText = Text(
-      value,
-      style: theme.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
+    final valueText = Text.rich(
+      TextSpan(
+        text: value,
+        children: [
+          if (outOf != null)
+            TextSpan(
+              text: ' / $outOf',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+        ],
       ),
+      style: theme.textTheme.headlineSmall,
+      semanticsLabel: outOf == null ? null : '$value ${AppLabels.outOf} $outOf',
     );
-    final labelText = Text(
-      label,
-      style: theme.textTheme.bodySmall?.copyWith(
-        color: colors.onSurfaceVariant,
-        height: 1.4,
-      ),
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        valueText,
+        const SizedBox(height: AppSpace.xs),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
-    final metricIcon = ExcludeSemantics(
-      child: Icon(icon, size: 20, color: colors.primary),
-    );
+    final metricIcon = GlassIcon(icon);
+    // The numbers already say this, so the bar is decoration for a reader.
+    final bar = progress == null
+        ? null
+        : ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.only(top: AppSpace.md),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+                backgroundColor: colors.onSurface.withValues(alpha: 0.08),
+              ),
+            ),
+          );
 
     return MergeSemantics(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppStyle.metricRadius),
-          border: Border.all(color: AppStyle.border(colors)),
+      child: GlassCard(
+        level: GlassLevel.inset,
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The value always sits above its label; a narrow tile only moves
+            // the icon to the side, so nothing can run out of the tile.
+            if (compact)
+              Row(
+                children: [
+                  metricIcon,
+                  const SizedBox(width: AppSpace.md),
+                  Expanded(child: text),
+                ],
+              )
+            else ...[
+              metricIcon,
+              const SizedBox(height: AppSpace.md),
+              text,
+            ],
+            ?bar,
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.md),
-          child: compact
-              ? Row(
-                  children: [
-                    metricIcon,
-                    const SizedBox(width: AppSpace.md),
-                    if (largeText)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            valueText,
-                            const SizedBox(height: AppSpace.xs),
-                            labelText,
-                          ],
+      ),
+    );
+  }
+}
+
+/// Courses as compact tiles: code first, so the titles line up in a column.
+class CourseworkCard extends StatelessWidget {
+  const CourseworkCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return SectionCard(
+      title: AppLabels.relevantCoursework,
+      icon: Icons.auto_stories_outlined,
+      child: AdaptiveGrid(
+        minTileWidth: AppBreak.courseTile,
+        maxColumns: 3,
+        spacing: AppSpace.sm,
+        children: [
+          for (final (index, (code, title))
+              in StudentProfile.coursework.indexed)
+            ProfileEntrance(
+              index: index % 3,
+              child: MergeSemantics(
+                child: GlassCard(
+                  level: GlassLevel.inset,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.md,
+                    vertical: AppSpace.md,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        code,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: colors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
-                      )
-                    else ...[
-                      Expanded(child: labelText),
+                      ),
                       const SizedBox(width: AppSpace.md),
-                      valueText,
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurface,
+                          ),
+                        ),
+                      ),
                     ],
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    metricIcon,
-                    const SizedBox(height: AppSpace.md),
-                    valueText,
-                    const SizedBox(height: AppSpace.xs),
-                    labelText,
-                  ],
+                  ),
                 ),
-        ),
+              ),
+            ),
+        ],
       ),
     );
   }

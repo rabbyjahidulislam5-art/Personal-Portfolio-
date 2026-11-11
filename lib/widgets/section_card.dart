@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'glass_card.dart';
 
 class SectionCard extends StatelessWidget {
   const SectionCard({
@@ -17,38 +18,30 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return DecoratedBox(
-      decoration: AppStyle.cardDecoration(colors),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.card),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Semantics(
-              header: true,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (icon != null) ...[
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        top: AppSpace.xs,
-                        end: AppSpace.md,
-                      ),
-                      child: Icon(icon, size: 20, color: colors.primary),
-                    ),
-                  ],
-                  Flexible(
-                    child: Text(title, style: theme.textTheme.titleLarge),
-                  ),
+    return GlassCard(
+      blurSigma: AppStyle.surfaceBlur,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  GlassIcon(icon!),
+                  const SizedBox(width: AppSpace.md),
                 ],
-              ),
+                Flexible(child: Text(title, style: theme.textTheme.titleLarge)),
+              ],
             ),
-            const SizedBox(height: AppSpace.lg),
-            child,
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpace.lg),
+          // Section paragraphs read at body-large size with relaxed leading.
+          DefaultTextStyle.merge(
+            style: theme.textTheme.bodyLarge,
+            child: child,
+          ),
+        ],
       ),
     );
   }
