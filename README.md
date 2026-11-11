@@ -45,6 +45,16 @@ flutter test
 flutter build apk --release
 ```
 
+## Deploy to Vercel
+
+Connect this repository to Vercel with the project root set to the repository
+root. `vercel.json` installs Flutter, builds the web app, and serves the
+generated `build/web` directory on each deployment.
+
+Web deployments make the profile data in `lib/data/student_profile.dart` and
+the image in `assets/profile.png` public. Remove any private contact details
+before deploying.
+
 ## Layout of the code
 
 | Path | Contents |
