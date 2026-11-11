@@ -36,10 +36,23 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href "/Personal-Portfolio/"
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
 
       - name: Verify Build Files
-        run: test -f build/web/flutter_bootstrap.js
+        run: |
+          test -f build/web/index.html
+          grep -Fq "<base href=\"/${GITHUB_REPOSITORY#*/}/\">" build/web/index.html
+          test -f build/web/flutter_bootstrap.js
+          test -f build/web/flutter_service_worker.js
+          test -f build/web/main.dart.js
+          test -f build/web/assets/AssetManifest.bin
+          test -f build/web/assets/assets/profile.png
+          test -f build/web/assets/fonts/MaterialIcons-Regular.otf
+          test -f build/web/manifest.json
+          test -f build/web/favicon.png
+          test -f build/web/icons/Icon-192.png
+          test -f build/web/canvaskit/canvaskit.js
+          test -f build/web/canvaskit/canvaskit.wasm
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
